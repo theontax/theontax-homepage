@@ -1,0 +1,55 @@
+# 홈페이지 배포 + 매일 블로그 최신 글 자동 반영
+#  - 파일을 올릴 때마다(push) 바로 배포
+#  - 매일 아침 6시(한국 시간)에 블로그 RSS를 읽어 최신 글 10개로 갱신 후 배포
+name: Deploy homepage
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 21 * * *"   # UTC 21:00 = 한국 시간 06:00
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 블로그 최신 글 갱신
+        run: python update_blog.py
+
+      - name: 바뀐 글이 있으면 저장
+        run: |
+          if [ -n "$(git status --porcelain site/assets)" ]; then
+            git config user.name "theontax-bot"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add site/assets
+            git commit -m "블로그 최신 글 자동 반영"
+            git push
+          fi
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
