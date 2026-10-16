@@ -235,10 +235,12 @@
 
   /* 스크롤 등장 효과: 화면에 들어오면 아래에서 위로 올라오며 나타남 (JS가 있을 때만 숨김) */
   .js .reveal { opacity: 0; transform: translateY(32px); transition: opacity .9s cubic-bezier(.2,.7,.2,1), transform .9s cubic-bezier(.2,.7,.2,1); transition-delay: var(--d, 0ms); }
+  .js .reveal.from-top { transform: translateY(-32px); }
   .js .reveal.in { opacity: 1; transform: none; }
   /* 큰 제목은 줄마다 가려진 틈에서 '삭' 올라오는 효과 */
   .js .slice .line { display: block; overflow: hidden; padding-bottom: .12em; margin-bottom: -.12em; }
   .js .slice .line > span { display: inline-block; transform: translateY(110%); transition: transform 1.1s cubic-bezier(.19,1,.22,1); transition-delay: var(--d, 0ms); }
+  .js .slice.from-top .line > span { transform: translateY(-110%); }
   .js .slice.in .line > span { transform: none; }
   .js .hero .rule { transform: scaleY(0); transform-origin: top; transition: transform .9s cubic-bezier(.19,1,.22,1) .35s; }
   .js .hero.in .rule { transform: none; }
@@ -565,19 +567,23 @@
     });
 
     const show = el => el.classList.add('in');
-    // 화면 아래 끝으로 들어오자마자 나타나기 시작 (빈 공간이 보이지 않게)
-    let pending = [...document.querySelectorAll('.reveal, .slice')];
+    // 화면에 들어오면 나타나고, 화면 밖으로 완전히 나가면 다시 숨겨서
+    // 위·아래 어느 쪽으로 스크롤하든 매번 같은 효과가 이어지게 한다
+    const targets = [...document.querySelectorAll('.reveal, .slice')];
     const check = () => {
-      const atBottom = window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 4;
-      const line = atBottom ? Infinity : window.innerHeight - Math.min(60, window.innerHeight * 0.06);
-      pending = pending.filter(el => {
-        if (el.getBoundingClientRect().top < line) { show(el); return false; }
-        return true;
+      const vh = window.innerHeight;
+      const atBottom = window.scrollY + vh >= document.documentElement.scrollHeight - 4;
+      const enterLine = atBottom ? Infinity : vh - Math.min(60, vh * 0.06);
+      targets.forEach(el => {
+        const r = el.getBoundingClientRect();
+        if (r.top < enterLine && r.bottom > 0) {
+          show(el);
+        } else if (r.bottom <= 0 || r.top >= vh) {
+          // 위로 빠져나간 요소는 다시 내려올 때 위에서, 아래로 빠져나간 요소는 아래에서 나타남
+          el.classList.toggle('from-top', r.bottom <= 0);
+          el.classList.remove('in');
+        }
       });
-      if (!pending.length) {
-        window.removeEventListener('scroll', check);
-        window.removeEventListener('resize', check);
-      }
     };
     window.addEventListener('scroll', check, { passive: true });
     window.addEventListener('resize', check);
