@@ -113,11 +113,11 @@
   /* 첫 화면: 사진 + 가운데 문구 하나 */
   .hero { position: relative; height: 100vh; height: 100svh; min-height: 560px; display: grid; place-items: center; text-align: center; color: var(--white); background: #0B1628; overflow: hidden; }
   /* 파란 하늘이 보이는 전체 사진 → 처마 끝으로 천천히 클로즈업 → 다시 전체 사진 */
-  .hero-bg { position: absolute; inset: 0; background: var(--photo-hero) center / cover no-repeat; transform-origin: 14% 18%; animation: closeup 26s infinite; will-change: transform; }
-  /* 열리자마자 곧바로 처마 끝으로 다가가기 시작해 끝에서 부드럽게 멈추고, 잠시 머문 뒤 천천히 돌아온다 */
+  .hero-bg { position: absolute; inset: 0; background: var(--photo-hero) center / cover no-repeat; transform-origin: 14% 18%; animation: closeup 32s infinite; will-change: transform; }
+  /* 1초 머문 뒤 처마 끝으로 천천히 다가가고, 잠시 머문 뒤 천천히 돌아온다 */
   @keyframes closeup {
-    0%        { transform: scale(1); animation-timing-function: cubic-bezier(.33,.45,.3,1); }
-    46%, 54%  { transform: scale(2); animation-timing-function: ease-in-out; }
+    0%, 3%    { transform: scale(1); animation-timing-function: cubic-bezier(.4,0,.3,1); }
+    47%, 55%  { transform: scale(2); animation-timing-function: ease-in-out; }
     100%      { transform: scale(1); }
   }
   @media (prefers-reduced-motion: reduce) { .hero-bg { animation: none; } }
@@ -464,7 +464,12 @@
       const carousel = document.querySelector('.carousel');
       ['mouseenter', 'focusin', 'touchstart'].forEach(e => carousel.addEventListener(e, () => paused = true, { passive: true }));
       ['mouseleave', 'focusout', 'touchend'].forEach(e => carousel.addEventListener(e, () => paused = false, { passive: true }));
-      setInterval(() => { if (!paused && !document.hidden) next(); }, 4000);
+      // 화면에 보일 때만 넘어가서, 내려왔을 때 항상 최신 글부터 보이게
+      const onScreen = () => {
+        const r = carousel.getBoundingClientRect();
+        return r.top < window.innerHeight && r.bottom > 0;
+      };
+      setInterval(() => { if (!paused && !document.hidden && onScreen()) next(); }, 4000);
     }
   })();
 
@@ -505,10 +510,12 @@
     const groups = [
       ['.head .en, .head p'],
       ['.intro .greet'],
-      ['.member'],
-      ['.career li', 45],
-      ['.svc', 110],
-      ['.carousel'],
+      ['.member img'],
+      ['.member .name, .member .profile-table', 150],
+      ['.career li', 60],
+      ['.svc', 120],
+      ['.post', 110],
+      ['.car-nav, .more', 120],
       ['.contact p.desc, .contact .btn', 120],
       ['.info > div', 90],
       ['footer .top, footer p', 80],
@@ -526,11 +533,11 @@
     });
 
     const show = el => el.classList.add('in');
-    // 화면 아래쪽 12% 지점까지 올라온 요소부터 나타나게
+    // 화면 아래 끝으로 들어오자마자 나타나기 시작 (빈 공간이 보이지 않게)
     let pending = [...document.querySelectorAll('.reveal, .slice')];
     const check = () => {
       const atBottom = window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 4;
-      const line = atBottom ? Infinity : window.innerHeight * 0.88;
+      const line = atBottom ? Infinity : window.innerHeight - Math.min(60, window.innerHeight * 0.06);
       pending = pending.filter(el => {
         if (el.getBoundingClientRect().top < line) { show(el); return false; }
         return true;
